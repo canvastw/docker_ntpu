@@ -1,0 +1,81 @@
+version: '3.7'
+
+networks:
+  backend:
+    driver: ${NETWORKS_DRIVER}
+    ipam:
+      config:
+        - subnet: 172.26.0.0/16
+          gateway: 172.26.0.1
+
+services:
+  nginx:
+    image: moodletw/nginx
+    build:
+      context: .
+      dockerfile: ./nginx/Dockerfile
+      args:
+        - APP_CODE_PATH=${APP_CODE_PATH_CONTAINER}
+        - APP_DATA_PATH=${APP_DATA_PATH_CONTAINER}
+        - APP_GROUP=${APP_GROUP}
+        - APP_GROUP_ID=${APP_GROUP_ID}
+        - APP_USER=${APP_USER}
+        - APP_USER_ID=${APP_USER_ID}
+        - TZ=${TIMEZONE}
+        - HTTP_LISTEN_PORT=${NGINX_HOST_HTTP_PORT}
+    volumes:
+      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
+      - ${APP_DATA_PATH_HOST}:${APP_DATA_PATH_CONTAINER}
+    ports:
+      - "${NGINX_HOST_HTTP_PORT}:${NGINX_HOST_HTTP_PORT}"
+      - "${NGINX_HOST_HTTPS_PORT}:443"
+    networks:
+      backend:
+        aliases:
+          - ${APP_HOST}
+
+  php-fpm:
+    image: moodletw/php-fpm
+    build:
+      context: .
+      dockerfile: ./php-fpm/Dockerfile
+      args:
+        - APP_CODE_PATH=${APP_CODE_PATH_CONTAINER}
+        - APP_DATA_PATH=${APP_DATA_PATH_CONTAINER}
+        - APP_GROUP=${APP_GROUP}
+        - APP_GROUP_ID=${APP_GROUP_ID}
+        - APP_USER=${APP_USER}
+        - APP_USER_ID=${APP_USER_ID}
+        - TARGET_PHP_VERSION=${PHP_VERSION}
+        - TZ=${TIMEZONE}
+        - APP_LOCALTEMP_PATH=${APP_LOCALTEMP_PATH_CONTAINER}
+    volumes:
+      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
+      - ${APP_DATA_PATH_HOST}:${APP_DATA_PATH_CONTAINER}
+      - ${APP_LOCALTEMP_HOST}:${APP_LOCALTEMP_PATH_CONTAINER}
+    networks:
+      - backend
+
+  workspace:
+    image: moodletw/workspace
+    build:
+      context: .
+      dockerfile: ./workspace/Dockerfile
+      args:
+        - APP_CODE_PATH=${APP_CODE_PATH_CONTAINER}
+        - APP_DATA_PATH=${APP_DATA_PATH_CONTAINER}
+        - APP_LOCALTEMP_PATH=${APP_LOCALTEMP_PATH_CONTAINER}
+        - APP_GROUP=${APP_GROUP}
+        - APP_GROUP_ID=${APP_GROUP_ID}
+        - APP_USER=${APP_USER}
+        - APP_USER_ID=${APP_USER_ID}
+        - TARGET_PHP_VERSION=${PHP_VERSION}
+        - TZ=${TIMEZONE}
+    volumes:
+      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
+      - ${APP_DATA_PATH_HOST}:${APP_DATA_PATH_CONTAINER}
+      - ${APP_LOCALTEMP_HOST}:${APP_LOCALTEMP_PATH_CONTAINER}
+    ports:
+      - "${WORKSPACE_HOST_SSH_PORT}:22"
+    networks:
+      - backend
