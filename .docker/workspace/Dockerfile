@@ -28,7 +28,7 @@ RUN apt-get update -yqq && apt-get install -yqq openssh-server netcat default-my
 
 # add default public key to authorized_keys
 USER ${APP_USER}
-COPY ${SERVICE_DIR}/.ssh/insecure_id_rsa.pub /tmp/insecure_id_rsa.pub
+COPY ${SERVICE_DIR}/.ssh/insecure_public_key /tmp/insecure_id_rsa.pub
 RUN mkdir -p ~/.ssh \
  && cat /tmp/insecure_id_rsa.pub >> ~/.ssh/authorized_keys \
  && chown -R ${APP_USER}: ~/.ssh \
