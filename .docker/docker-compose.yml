@@ -10,72 +10,58 @@ networks:
 
 services:
   nginx:
-    image: moodletw/nginx
-    build:
-      context: .
-      dockerfile: ./nginx/Dockerfile
-      args:
-        - APP_CODE_PATH=${APP_CODE_PATH_CONTAINER}
-        - APP_DATA_PATH=${APP_DATA_PATH_CONTAINER}
-        - APP_GROUP=${APP_GROUP}
-        - APP_GROUP_ID=${APP_GROUP_ID}
-        - APP_USER=${APP_USER}
-        - APP_USER_ID=${APP_USER_ID}
-        - TZ=${TIMEZONE}
-        - HTTP_LISTEN_PORT=${NGINX_HOST_HTTP_PORT}
+    image: moodletw/${COMPOSE_PROJECT_NAME}-nginx
+    restart: always
+    environment:
+      - TZ=${TIMEZONE}
     volumes:
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
       - ${APP_DATA_PATH_HOST}:${APP_DATA_PATH_CONTAINER}
     ports:
-      - "${NGINX_HOST_HTTP_PORT}:${NGINX_HOST_HTTP_PORT}"
-      - "${NGINX_HOST_HTTPS_PORT}:443"
+      - "${HTTP_PORT_HOST}:8080"
     networks:
       backend:
         aliases:
           - ${APP_HOST}
 
   php-fpm:
-    image: moodletw/php-fpm
-    build:
-      context: .
-      dockerfile: ./php-fpm/Dockerfile
-      args:
-        - APP_CODE_PATH=${APP_CODE_PATH_CONTAINER}
-        - APP_DATA_PATH=${APP_DATA_PATH_CONTAINER}
-        - APP_GROUP=${APP_GROUP}
-        - APP_GROUP_ID=${APP_GROUP_ID}
-        - APP_USER=${APP_USER}
-        - APP_USER_ID=${APP_USER_ID}
-        - TARGET_PHP_VERSION=${PHP_VERSION}
-        - TZ=${TIMEZONE}
-        - APP_LOCALTEMP_PATH=${APP_LOCALTEMP_PATH_CONTAINER}
+    image: moodletw/${COMPOSE_PROJECT_NAME}-php-fpm
+    restart: always
+    environment:
+      - TZ=${TIMEZONE}
     volumes:
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
       - ${APP_DATA_PATH_HOST}:${APP_DATA_PATH_CONTAINER}
-      - ${APP_LOCALTEMP_HOST}:${APP_LOCALTEMP_PATH_CONTAINER}
+      - ${APP_PHP_CONF_PATH_HOST}:/usr/local/etc/php-fpm.d
     networks:
       - backend
 
   workspace:
-    image: moodletw/workspace
-    build:
-      context: .
-      dockerfile: ./workspace/Dockerfile
-      args:
-        - APP_CODE_PATH=${APP_CODE_PATH_CONTAINER}
-        - APP_DATA_PATH=${APP_DATA_PATH_CONTAINER}
-        - APP_LOCALTEMP_PATH=${APP_LOCALTEMP_PATH_CONTAINER}
-        - APP_GROUP=${APP_GROUP}
-        - APP_GROUP_ID=${APP_GROUP_ID}
-        - APP_USER=${APP_USER}
-        - APP_USER_ID=${APP_USER_ID}
-        - TARGET_PHP_VERSION=${PHP_VERSION}
-        - TZ=${TIMEZONE}
+    image: moodletw/${COMPOSE_PROJECT_NAME}-workspace
+    restart: always
     volumes:
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
       - ${APP_DATA_PATH_HOST}:${APP_DATA_PATH_CONTAINER}
-      - ${APP_LOCALTEMP_HOST}:${APP_LOCALTEMP_PATH_CONTAINER}
     ports:
       - "${WORKSPACE_HOST_SSH_PORT}:22"
+    networks:
+      - backend
+
+  agent:
+    image: zabbix/zabbix-agent
+    privileged: true
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
+      - ${APP_DATA_PATH_HOST}:${APP_DATA_PATH_CONTAINER}
+    environment:
+      - TZ=${TIMEZONE}
+      - ZBX_HOSTNAME=${COMPOSE_PROJECT_NAME}
+      - ZBX_STARTAGENTS=0
+      - ZBX_PASSIVE_ALLOW=false
+      - ZBX_ACTIVE_ALLOW=true
+      - ZBX_ACTIVESERVERS=${ZBX_ACTIVESERVER}
+      #- ZBX_DEBUGLEVEL=4
     networks:
       - backend
